@@ -1,19 +1,20 @@
-name: Android Release
+name: Release
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-release-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    name: Android APK
     runs-on: ubuntu-latest
 
     # `secrets` is not a valid context in a step's `if`, but it is at job level.
@@ -137,3 +138,53 @@ jobs:
             --title "Raspored ${{ steps.appver.outputs.version }} (build ${{ github.run_number }})" \
             --notes "Automated build from ${{ github.sha }}." \
             --target "${{ github.sha }}"
+
+  # Runs in parallel with the APK build: installed apps on the `production`
+  # channel pick this JS bundle up on next launch, without a reinstall. Only
+  # builds whose runtimeVersion matches (appVersion policy -> app.json version)
+  # are eligible, so bumping `version` cuts older builds off from new updates.
+  update:
+    name: OTA update
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check EAS token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is not set; create a token at https://expo.dev/settings/access-tokens and add it to the repository secrets."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish update
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # Via env, not string interpolation: a commit message is untrusted
+          # input and would otherwise be pasted straight into the shell.
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          MESSAGE="$(printf '%s' "${COMMIT_MESSAGE:-Manual run}" | head -n 1)"
+          eas update \
+            --channel production \
+            --platform android \
+            --environment production \
+            --message "$MESSAGE" \
+            --non-interactive

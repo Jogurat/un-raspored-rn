@@ -18,10 +18,25 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "93494992-4425-4f4f-a9b9-88341b4f41d3"
+      }
+    },
+    "owner": "jogurat",
+    "updates": {
+      "url": "https://u.expo.dev/93494992-4425-4f4f-a9b9-88341b4f41d3",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     }
   }
 }
