@@ -7,12 +7,26 @@ rotation. No account, no network, no backend.
 ## Running it
 
 ```bash
+nvm use            # reads .nvmrc -> Node 24.12.0
 npm install
 npm start          # then press a / i, or scan the QR code
 npm run typecheck  # tsc --noEmit
 ```
 
-Requires Node 20.19.4+ (Expo SDK 57). The repo was developed on Node 24.12.0.
+### Node version
+
+`package.json` declares the range React Native 0.86 and Metro themselves
+require:
+
+```
+^20.19.4 || ^22.13.0 || ^24.3.0 || >= 25.0.0
+```
+
+`.nvmrc` pins **24.12.0**, the version this was built and verified on, so
+`nvm use` picks it up with no argument. `.npmrc` sets `engine-strict=true`, so
+`npm install` **fails** rather than warns on an unsupported Node — on Node 18 it
+stops with `EBADENGINE`. If you would rather have a warning than a hard stop,
+delete `.npmrc`.
 
 ## What the app does
 
