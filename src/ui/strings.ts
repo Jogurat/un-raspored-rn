@@ -101,10 +101,16 @@ export const SHIFT_LABELS: Readonly<Record<Shift, string>> = {
   AFTERNOON: 'ПОПОДНЕ',
 };
 
-/** Sun / moon glyphs standing in for the original's vector drawables. */
+/**
+ * Sun / moon glyphs standing in for the original's vector drawables.
+ *
+ * The moon is the emoji crescent rather than U+263E: it reads as a solid shape
+ * at a glance where the text glyph reads as punctuation. It renders in the
+ * font's own colour, so unlike the sun it ignores the `theme.primary` tint.
+ */
 export const SHIFT_ICONS: Readonly<Record<Shift, string>> = {
   MORNING: '☀',
-  AFTERNOON: '☾',
+  AFTERNOON: '🌙',
 };
 
 export const SHIFT_ICON_LABELS: Readonly<Record<Shift, string>> = {

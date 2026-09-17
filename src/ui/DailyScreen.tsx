@@ -251,7 +251,9 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   header: { fontSize: 24, fontWeight: '400' },
   shiftRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  shiftIcon: { fontSize: 18, marginRight: spacing.sm },
+  // Sized up from the 16pt label so the glyph reads as an icon rather than
+  // punctuation; lineHeight is pinned to stop Android clipping the ascender.
+  shiftIcon: { fontSize: 24, lineHeight: 28, marginRight: spacing.sm },
   shiftLabel: { fontSize: 16, fontWeight: '500' },
   firstStart: { fontSize: 16, fontWeight: '500', marginLeft: spacing.md },
   list: { flex: 1, marginTop: spacing.sm },
