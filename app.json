@@ -1,19 +1,21 @@
 {
   "expo": {
-    "name": "un-raspored-rn",
-    "slug": "un-raspored-rn",
+    "name": "Raspored",
+    "slug": "un-raspored",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "scheme": "raspored",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ostojic.raspored"
     },
     "android": {
+      "package": "com.ostojic.raspored",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1BA1E2",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
