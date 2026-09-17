@@ -16,6 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # `secrets` is not a valid context in a step's `if`, but it is at job level.
+    # Resolving it to a boolean here keeps the secret itself out of the job env
+    # while still letting the signing step be conditional.
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +66,7 @@ jobs:
       # debug keystore Expo generates: it installs fine, but cannot go to Play,
       # and it will not upgrade over a differently-signed build.
       - name: Configure release signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
