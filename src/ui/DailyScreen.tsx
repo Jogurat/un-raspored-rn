@@ -5,7 +5,8 @@
  * - The header shows the abbreviated Cyrillic weekday, the group when present,
  *   and the selected date in short numeric form, e.g. "ЧЕТ Парна 17.09.26".
  * - A shift label is shown when a shift applies, preceded by a sun (morning) or
- *   moon (afternoon) glyph.
+ *   moon (afternoon) glyph, and followed by the start time of the day's first
+ *   period when the day has any.
  * - When a message applies it replaces the period list entirely.
  * - Otherwise the resolved lessons render in ascending period order, each with
  *   its period number, class code and start–end times; a pause shows the
@@ -120,6 +121,11 @@ function Header({ state, theme }: { state: DailyUiState; theme: Theme }) {
   if (state.group !== null) parts.push(GROUP_LABELS[state.group]);
   parts.push(formatHeaderDate(state.date));
 
+  // ScheduleService sorts ascending by period and trims leading pauses, so the
+  // head of the list is the day's earliest scheduled period. Its `start` is
+  // already an IsoTime in HH:mm, the same value the rows render.
+  const firstStart = state.lessons.length > 0 ? state.lessons[0].start : null;
+
   return (
     <View>
       <Text style={[styles.header, { color: theme.onBackground }]}>{parts.join(' ')}</Text>
@@ -131,6 +137,14 @@ function Header({ state, theme }: { state: DailyUiState; theme: Theme }) {
           <Text style={[styles.shiftLabel, { color: theme.primary }]}>
             {SHIFT_LABELS[state.shift]}
           </Text>
+          {firstStart !== null && (
+            <Text
+              style={[styles.firstStart, { color: theme.primary }]}
+              accessibilityLabel={strings.firstPeriodStart(firstStart)}
+            >
+              {firstStart}
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -239,6 +253,7 @@ const styles = StyleSheet.create({
   shiftRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   shiftIcon: { fontSize: 18, marginRight: spacing.sm },
   shiftLabel: { fontSize: 16, fontWeight: '500' },
+  firstStart: { fontSize: 16, fontWeight: '500', marginLeft: spacing.md },
   list: { flex: 1, marginTop: spacing.sm },
   messageWrap: { flex: 1, paddingTop: spacing.xl },
   message: { fontSize: 16, textAlign: 'center' },

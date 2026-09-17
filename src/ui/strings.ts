@@ -26,6 +26,9 @@ export const strings = {
   actionNextDay: 'Следећи дан',
   actionOpenCalendar: 'Календар',
 
+  /** Screen-reader label for the first period's start time in the Daily header. */
+  firstPeriodStart: (time: string) => `Почетак првог часа у ${time}`,
+
   pauseLabel: 'Пауза (нема часа)',
 
   messageWeekend: 'Нема наставе (викенд).',
