@@ -14,6 +14,10 @@
  *
  * The day body can also be dragged horizontally to move between days, mirroring
  * the ‹ / › buttons: drag left for the next day, right for the previous one.
+ * The drag is deliberately understated: the body follows the finger at a heavy
+ * damping ratio and only a few dp at most, and the day change itself is a short
+ * crossfade rather than a full-width slide, so no blank screen ever passes
+ * between the two days.
  */
 
 import React, { useMemo, useRef, useState } from 'react';
@@ -25,7 +29,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,6 +54,14 @@ const SWIPE_DISTANCE = 64;
 const SWIPE_VELOCITY = 0.4;
 /** Travel before a drag is treated as horizontal rather than a list scroll. */
 const SWIPE_CLAIM = 12;
+/** Fraction of the finger's travel the body actually moves. */
+const DRAG_DAMPING = 0.18;
+/** Hard cap, in dp, on how far the body can be nudged while dragging. */
+const DRAG_MAX = 20;
+/** Offset, in dp, the outgoing day leaves at and the incoming day enters from. */
+const SWAP_OFFSET = 14;
+/** Duration, in ms, of each half of the crossfade. */
+const SWAP_MS = 110;
 
 export interface DailyScreenProps {
   state: DailyUiState;
@@ -73,31 +84,38 @@ export function DailyScreen({
 }: DailyScreenProps) {
   const theme = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { width } = useWindowDimensions();
   const translateX = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
 
-  const settle = (toValue: number) =>
+  const settle = () =>
     Animated.spring(translateX, {
-      toValue,
+      toValue: 0,
       useNativeDriver: true,
       bounciness: 0,
       speed: 18,
     });
 
   // `direction` is the sign of the drag: -1 (dragged left) advances a day.
-  // The outgoing day finishes its exit, then the new day is swapped in off the
-  // opposite edge and settles to centre, so the motion reads as continuous.
+  // The outgoing day fades out over a short nudge in the drag's direction, the
+  // new day is swapped in at the mirrored offset, and fades back to centre.
+  // Neither day ever travels far enough to leave a gap on screen.
   const commit = (direction: -1 | 1) => {
-    Animated.timing(translateX, {
-      toValue: direction * width,
-      duration: 140,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: direction * SWAP_OFFSET,
+        duration: SWAP_MS,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, { toValue: 0, duration: SWAP_MS, useNativeDriver: true }),
+    ]).start(({ finished }) => {
       if (!finished) return;
       if (direction < 0) onNextDay();
       else onPreviousDay();
-      translateX.setValue(-direction * width);
-      settle(0).start();
+      translateX.setValue(-direction * SWAP_OFFSET);
+      Animated.parallel([
+        Animated.timing(translateX, { toValue: 0, duration: SWAP_MS, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: SWAP_MS, useNativeDriver: true }),
+      ]).start();
     });
   };
 
@@ -109,18 +127,23 @@ export function DailyScreen({
         // through to it and scroll as usual.
         onMoveShouldSetPanResponderCapture: (_event, gesture) =>
           Math.abs(gesture.dx) > SWIPE_CLAIM && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-        onPanResponderMove: (_event, gesture) => translateX.setValue(gesture.dx),
+        // The body trails the finger only faintly, so the gesture reads as a
+        // hint that the day will change rather than as dragging a page.
+        onPanResponderMove: (_event, gesture) => {
+          const damped = gesture.dx * DRAG_DAMPING;
+          translateX.setValue(Math.max(-DRAG_MAX, Math.min(DRAG_MAX, damped)));
+        },
         onPanResponderRelease: (_event, gesture) => {
           const far = Math.abs(gesture.dx) > SWIPE_DISTANCE;
           const fast = Math.abs(gesture.vx) > SWIPE_VELOCITY;
           if (far || fast) commit(gesture.dx < 0 ? -1 : 1);
-          else settle(0).start();
+          else settle().start();
         },
-        onPanResponderTerminate: () => settle(0).start(),
+        onPanResponderTerminate: () => settle().start(),
       }),
-    // Recreated when the width or the day callbacks change; `translateX` is a
-    // ref and stable across renders.
-    [width, onNextDay, onPreviousDay],
+    // Recreated when the day callbacks change; `translateX` and `opacity` are
+    // refs and stable across renders.
+    [onNextDay, onPreviousDay],
   );
 
   const title = state.owner.trim().length > 0
@@ -154,7 +177,10 @@ export function DailyScreen({
 
       <UpdateBanner controller={update} />
 
-      <Animated.View style={[styles.body, { transform: [{ translateX }] }]} {...pan.panHandlers}>
+      <Animated.View
+        style={[styles.body, { opacity, transform: [{ translateX }] }]}
+        {...pan.panHandlers}
+      >
         <Header state={state} theme={theme} />
 
         {state.message !== null ? (
