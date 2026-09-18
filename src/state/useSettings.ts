@@ -22,7 +22,8 @@ export interface SettingsController {
   /** The last validation failure, or null when valid / untouched. */
   error: OwnerError | null;
   onOwnerTextChanged: (text: string) => void;
-  saveOwner: () => Promise<void>;
+  /** Persists the in-progress text; resolves true only when it was saved. */
+  saveOwner: () => Promise<boolean>;
 }
 
 export function useSettings(): SettingsController {
@@ -45,14 +46,15 @@ export function useSettings(): SettingsController {
       // A write failure leaves the stored owner untouched; surfacing it as a
       // validation error would be misleading, so the field simply keeps its
       // in-progress value.
-      return;
+      return false;
     }
     if (result === 'Saved') {
       setEditingText(settingsRepository.state.value.owner);
       setError(null);
-    } else {
-      setError(result === 'Empty' ? 'EMPTY' : 'TOO_LONG');
+      return true;
     }
+    setError(result === 'Empty' ? 'EMPTY' : 'TOO_LONG');
+    return false;
   }, [settingsRepository, editingText]);
 
   return { storedOwner, editingText, error, onOwnerTextChanged, saveOwner };

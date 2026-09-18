@@ -22,6 +22,12 @@ export function SettingsScreen({ controller, onBack }: SettingsScreenProps) {
   const theme = useTheme();
   const { storedOwner, editingText, error, onOwnerTextChanged, saveOwner } = controller;
 
+  const onSavePressed = React.useCallback(async () => {
+    if (await saveOwner()) {
+      onBack();
+    }
+  }, [saveOwner, onBack]);
+
   const supporting =
     error === 'EMPTY'
       ? strings.ownerErrorEmpty
@@ -74,7 +80,7 @@ export function SettingsScreen({ controller, onBack }: SettingsScreenProps) {
         </Text>
 
         <Pressable
-          onPress={saveOwner}
+          onPress={onSavePressed}
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.button,
