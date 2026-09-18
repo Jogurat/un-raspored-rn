@@ -17,6 +17,11 @@ jobs:
     name: Android APK
     runs-on: ubuntu-latest
 
+    # Disabled for now. Everything below is kept intact and unmodified; flip
+    # this to `true` (or drop the line) to turn the APK build back on. The OTA
+    # `update` job below is unaffected and still runs on every push to main.
+    if: false
+
     # `secrets` is not a valid context in a step's `if`, but it is at job level.
     # Resolving it to a boolean here keeps the secret itself out of the job env
     # while still letting the signing step be conditional.

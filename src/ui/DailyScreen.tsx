@@ -11,20 +11,27 @@
  * - Otherwise the resolved lessons render in ascending period order, each with
  *   its period number, class code and start–end times; a pause shows the
  *   "no class" label in place of a code.
+ *
+ * The day body can also be dragged horizontally to move between days, mirroring
+ * the ‹ / › buttons: drag left for the next day, right for the previous one.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatHeaderDate } from '../domain/dates';
 import type { ResolvedLesson } from '../domain/models';
+import type { AppUpdateController } from '../state/useAppUpdate';
 import type { DailyUiState } from '../state/useSchedule';
 import {
   DAILY_MESSAGES,
@@ -36,9 +43,18 @@ import {
   strings,
 } from './strings';
 import { spacing, useTheme, type Theme } from './theme';
+import { UpdateBanner } from './UpdateBanner';
+
+/** Horizontal travel, in dp, past which releasing commits the day change. */
+const SWIPE_DISTANCE = 64;
+/** Fling speed, in dp/ms, that commits regardless of distance travelled. */
+const SWIPE_VELOCITY = 0.4;
+/** Travel before a drag is treated as horizontal rather than a list scroll. */
+const SWIPE_CLAIM = 12;
 
 export interface DailyScreenProps {
   state: DailyUiState;
+  update: AppUpdateController;
   onPreviousDay: () => void;
   onNextDay: () => void;
   onOpenCalendar: () => void;
@@ -48,6 +64,7 @@ export interface DailyScreenProps {
 
 export function DailyScreen({
   state,
+  update,
   onPreviousDay,
   onNextDay,
   onOpenCalendar,
@@ -56,6 +73,55 @@ export function DailyScreen({
 }: DailyScreenProps) {
   const theme = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { width } = useWindowDimensions();
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const settle = (toValue: number) =>
+    Animated.spring(translateX, {
+      toValue,
+      useNativeDriver: true,
+      bounciness: 0,
+      speed: 18,
+    });
+
+  // `direction` is the sign of the drag: -1 (dragged left) advances a day.
+  // The outgoing day finishes its exit, then the new day is swapped in off the
+  // opposite edge and settles to centre, so the motion reads as continuous.
+  const commit = (direction: -1 | 1) => {
+    Animated.timing(translateX, {
+      toValue: direction * width,
+      duration: 140,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      if (direction < 0) onNextDay();
+      else onPreviousDay();
+      translateX.setValue(-direction * width);
+      settle(0).start();
+    });
+  };
+
+  const pan = useMemo(
+    () =>
+      PanResponder.create({
+        // Claimed on the capture phase so a horizontal drag that starts on the
+        // period list is taken from the FlatList, while vertical drags fall
+        // through to it and scroll as usual.
+        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
+          Math.abs(gesture.dx) > SWIPE_CLAIM && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+        onPanResponderMove: (_event, gesture) => translateX.setValue(gesture.dx),
+        onPanResponderRelease: (_event, gesture) => {
+          const far = Math.abs(gesture.dx) > SWIPE_DISTANCE;
+          const fast = Math.abs(gesture.vx) > SWIPE_VELOCITY;
+          if (far || fast) commit(gesture.dx < 0 ? -1 : 1);
+          else settle(0).start();
+        },
+        onPanResponderTerminate: () => settle(0).start(),
+      }),
+    // Recreated when the width or the day callbacks change; `translateX` is a
+    // ref and stable across renders.
+    [width, onNextDay, onPreviousDay],
+  );
 
   const title = state.owner.trim().length > 0
     ? strings.appBarTitleOwner(state.owner)
@@ -86,7 +152,9 @@ export function DailyScreen({
         onOpenEditor={onOpenEditor}
       />
 
-      <View style={styles.body}>
+      <UpdateBanner controller={update} />
+
+      <Animated.View style={[styles.body, { transform: [{ translateX }] }]} {...pan.panHandlers}>
         <Header state={state} theme={theme} />
 
         {state.message !== null ? (
@@ -104,7 +172,7 @@ export function DailyScreen({
             ItemSeparatorComponent={() => <View style={{ height: spacing.xs }} />}
           />
         )}
-      </View>
+      </Animated.View>
 
       <View style={[styles.nav, { borderTopColor: theme.surfaceVariant }]}>
         <NavButton label={strings.actionPreviousDay} glyph="‹" onPress={onPreviousDay} theme={theme} />
@@ -238,7 +306,9 @@ function OverflowMenu({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  // Clipped so a day sliding in or out never shows past the screen edge on iOS,
+  // where views do not clip their children by default.
+  root: { flex: 1, overflow: 'hidden' },
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',

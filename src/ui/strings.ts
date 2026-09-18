@@ -50,6 +50,11 @@ export const strings = {
   noticeReverted: "Враћен претходни распоред",
   noticeNoPrevious: "Нема претходног распореда",
 
+  updateDownloading: "Преузимање нове верзије…",
+  updateReady: "Нова верзија је спремна",
+  actionRestart: "Поново покрени",
+  actionDismissUpdate: "Затвори обавештење",
+
   calendarTitle: "Изабери датум",
   actionToday: "Данас",
 } as const;

@@ -12,7 +12,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:android": "expo prebuild --platform android --no-install && cd android && ./gradlew assembleRelease",
+    "build:android": "./scripts/build-android-release.sh",
+    "build:android:unsigned": "expo prebuild --platform android --no-install --clean && cd android && ./gradlew assembleRelease",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -15,7 +15,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { IsoDate } from './domain/dates';
 import { AppProvider } from './state/AppContext';
-import { useSchedule } from './state/useSchedule';
+import { useAppUpdate } from './state/useAppUpdate';
+import { useSchedule, type ScheduleController } from './state/useSchedule';
 import { useScheduleEditor } from './state/useScheduleEditor';
 import { useSettings } from './state/useSettings';
 import { CalendarScreen } from './ui/CalendarScreen';
@@ -58,10 +59,8 @@ function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Daily">
         {({ navigation }) => (
-          <DailyScreen
-            state={schedule.state}
-            onPreviousDay={schedule.previousDay}
-            onNextDay={schedule.nextDay}
+          <DailyRoute
+            schedule={schedule}
             onOpenCalendar={() => navigation.navigate('Calendar')}
             onOpenSettings={() => navigation.navigate('Settings')}
             onOpenEditor={() => navigation.navigate('Editor')}
@@ -91,6 +90,35 @@ function RootNavigator() {
         {({ navigation }) => <EditorRoute onBack={() => navigation.goBack()} />}
       </Stack.Screen>
     </Stack.Navigator>
+  );
+}
+
+/**
+ * The update banner is driven from here rather than from the navigator, so the
+ * hook runs inside a component of its own — the screen callbacks above are
+ * render functions, not components, and cannot hold hooks.
+ */
+function DailyRoute({
+  schedule,
+  onOpenCalendar,
+  onOpenSettings,
+  onOpenEditor,
+}: {
+  schedule: ScheduleController;
+  onOpenCalendar: () => void;
+  onOpenSettings: () => void;
+  onOpenEditor: () => void;
+}) {
+  return (
+    <DailyScreen
+      state={schedule.state}
+      update={useAppUpdate()}
+      onPreviousDay={schedule.previousDay}
+      onNextDay={schedule.nextDay}
+      onOpenCalendar={onOpenCalendar}
+      onOpenSettings={onOpenSettings}
+      onOpenEditor={onOpenEditor}
+    />
   );
 }
 
